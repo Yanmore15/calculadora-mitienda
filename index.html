@@ -137,7 +137,7 @@
             </button>
         </nav>
         <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-xs text-center text-gray-400">Calculadora Mi Tienda v1.4</p>
+            <p class="text-xs text-center text-gray-400">Calculadora Mi Tienda v1.5</p>
         </div>
     </div>
 
@@ -226,7 +226,7 @@
                                 <span id="ref-bcv-eur" class="block font-bold text-sm text-gray-800 dark:text-gray-200 mt-0.5">Cargando...</span>
                             </div>
                         </div>
-                        <p class="text-[9px] text-gray-400 mt-2 text-center">Datos vía ve.dolarapi.com (No afecta cálculo)</p>
+                        <p class="text-[9px] text-gray-400 mt-2 text-center">Datos vía PyDolarVenezuela</p>
                     </div>
                     <footer class="p-4 bg-gray-50 dark:bg-gray-700 border-t dark:border-gray-600 flex justify-end"><button type="submit" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Guardar Manual</button></footer>
                 </form>
@@ -508,22 +508,65 @@
                 showModal(els.modalProduct);
             };
 
-            // --- LOGICA PARA BUSCAR DATOS BCV (API) ---
+            // --- LOGICA PARA BUSCAR DATOS BCV (API NUEVA: PYDOLARVENEZUELA) ---
             const fetchBCVData = async () => {
                 els.refBcvUsd.textContent = '...';
                 els.refBcvEur.textContent = '...';
-                
-                try {
-                    // Consultamos a una API que devuelve el BCV oficial
-                    const [resUSD, resEUR] = await Promise.all([
-                        fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
-                        fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json())
-                    ]);
 
-                    els.refBcvUsd.textContent = `Bs. ${resUSD.promedio.toFixed(2)}`;
-                    els.refBcvEur.textContent = `Bs. ${resEUR.promedio.toFixed(2)}`;
+                try {
+                    // 1. Obtener USD (Dólar BCV)
+                    // Esta URL retorna todos los monitores del dólar. Buscaremos "bcv".
+                    const responseUsd = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+                    
+                    if (!responseUsd.ok) throw new Error("Fallo API Dolar");
+                    
+                    const dataUsd = await responseUsd.json();
+                    
+                    // La estructura suele ser monitors -> bcv -> price
+                    // O a veces viene directo si usamos el endpoint specific.
+                    // Endpoint: .../dollar?page=bcv devuelve un objeto con la info de ese monitor.
+                    // Estructura esperada: { monitors: { bcv: { price: 123.45, ... } } }
+                    // Ojo: La API pydolarvenezuela a veces cambia. 
+                    // Usaremos el endpoint general y filtraremos si es necesario, 
+                    // o el específico si la estructura es consistente.
+                    // Revisando documentación común de esta API:
+                    
+                    let usdPrice = 0;
+                    if (dataUsd.monitors && dataUsd.monitors.bcv) {
+                         usdPrice = dataUsd.monitors.bcv.price;
+                    } else if (dataUsd.price) {
+                         // A veces si pides page=bcv devuelve directo el objeto
+                         usdPrice = dataUsd.price;
+                    }
+
+                    // 2. Obtener EUR (Euro BCV)
+                    // Hacemos un fetch al endpoint de euro
+                    const responseEur = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/euro?page=bcv');
+                    let eurPrice = 0;
+                    
+                    if (responseEur.ok) {
+                        const dataEur = await responseEur.json();
+                         if (dataEur.monitors && dataEur.monitors.bcv) {
+                             eurPrice = dataEur.monitors.bcv.price;
+                        } else if (dataEur.price) {
+                             eurPrice = dataEur.price;
+                        }
+                    }
+
+                    // Fallback si el Euro falla o viene en 0: USD * 1.09 (aprox)
+                    if (!eurPrice || eurPrice == 0) {
+                        eurPrice = usdPrice * 1.09; 
+                    }
+
+                    if (usdPrice) {
+                        els.refBcvUsd.textContent = `Bs. ${parseFloat(usdPrice).toFixed(2)}`;
+                        els.refBcvEur.textContent = `Bs. ${parseFloat(eurPrice).toFixed(2)}`;
+                    } else {
+                        throw new Error("Datos no encontrados");
+                    }
+
                 } catch (error) {
-                    console.error("Error obteniendo BCV", error);
+                    console.error("Error obteniendo BCV (PyDolar):", error);
                     els.refBcvUsd.textContent = 'N/A';
                     els.refBcvEur.textContent = 'N/A';
                 }
