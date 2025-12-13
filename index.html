@@ -508,68 +508,62 @@
                 showModal(els.modalProduct);
             };
 
-            // --- LOGICA PARA BUSCAR DATOS BCV (API NUEVA: PYDOLARVENEZUELA) ---
+// --- LOGICA ROBUSTA PARA BUSCAR DATOS BCV (DOBLE INTENTO) ---
             const fetchBCVData = async () => {
-                els.refBcvUsd.textContent = '...';
-                els.refBcvEur.textContent = '...';
+                // Indicador de carga
+                els.refBcvUsd.textContent = 'Cargando...';
+                els.refBcvEur.textContent = 'Cargando...';
 
+                // --- INTENTO 1: PyDolarVenezuela (Suele ser la más estable) ---
                 try {
-                    // 1. Obtener USD (Dólar BCV)
-                    // Esta URL retorna todos los monitores del dólar. Buscaremos "bcv".
-                    const responseUsd = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv');
+                    const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar');
+                    if (!response.ok) throw new Error('API 1 falló');
                     
-                    if (!responseUsd.ok) throw new Error("Fallo API Dolar");
+                    const data = await response.json();
                     
-                    const dataUsd = await responseUsd.json();
-                    
-                    // La estructura suele ser monitors -> bcv -> price
-                    // O a veces viene directo si usamos el endpoint specific.
-                    // Endpoint: .../dollar?page=bcv devuelve un objeto con la info de ese monitor.
-                    // Estructura esperada: { monitors: { bcv: { price: 123.45, ... } } }
-                    // Ojo: La API pydolarvenezuela a veces cambia. 
-                    // Usaremos el endpoint general y filtraremos si es necesario, 
-                    // o el específico si la estructura es consistente.
-                    // Revisando documentación común de esta API:
-                    
-                    let usdPrice = 0;
-                    if (dataUsd.monitors && dataUsd.monitors.bcv) {
-                         usdPrice = dataUsd.monitors.bcv.price;
-                    } else if (dataUsd.price) {
-                         // A veces si pides page=bcv devuelve directo el objeto
-                         usdPrice = dataUsd.price;
-                    }
+                    // Verificamos si existe el monitor BCV
+                    if (data.monitors && data.monitors.bcv) {
+                        const usd = parseFloat(data.monitors.bcv.price);
+                        // El euro a veces no viene directo, calculamos un estimado base o buscamos si existe
+                        // Para simplificar y asegurar que no falle, usamos la relación oficial si no hay endpoint de euro
+                        // Pero intentaremos buscar el euro en su propio endpoint
+                        let eur = usd * 1.1; // Fallback temporal
 
-                    // 2. Obtener EUR (Euro BCV)
-                    // Hacemos un fetch al endpoint de euro
-                    const responseEur = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/euro?page=bcv');
-                    let eurPrice = 0;
-                    
-                    if (responseEur.ok) {
-                        const dataEur = await responseEur.json();
-                         if (dataEur.monitors && dataEur.monitors.bcv) {
-                             eurPrice = dataEur.monitors.bcv.price;
-                        } else if (dataEur.price) {
-                             eurPrice = dataEur.price;
-                        }
-                    }
+                        try {
+                            const respEur = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/euro');
+                            const dataEur = await respEur.json();
+                            if(dataEur.monitors && dataEur.monitors.bcv) {
+                                eur = parseFloat(dataEur.monitors.bcv.price);
+                            }
+                        } catch(e) { console.log("Euro API 1 falló, usando estimado"); }
 
-                    // Fallback si el Euro falla o viene en 0: USD * 1.09 (aprox)
-                    if (!eurPrice || eurPrice == 0) {
-                        eurPrice = usdPrice * 1.09; 
+                        els.refBcvUsd.textContent = `Bs. ${usd.toFixed(2)}`;
+                        els.refBcvEur.textContent = `Bs. ${eur.toFixed(2)}`;
+                        return; // ¡Éxito! Salimos de la función
                     }
-
-                    if (usdPrice) {
-                        els.refBcvUsd.textContent = `Bs. ${parseFloat(usdPrice).toFixed(2)}`;
-                        els.refBcvEur.textContent = `Bs. ${parseFloat(eurPrice).toFixed(2)}`;
-                    } else {
-                        throw new Error("Datos no encontrados");
-                    }
-
-                } catch (error) {
-                    console.error("Error obteniendo BCV (PyDolar):", error);
-                    els.refBcvUsd.textContent = 'N/A';
-                    els.refBcvEur.textContent = 'N/A';
+                } catch (err1) {
+                    console.warn("Intento 1 fallido, probando API de respaldo...", err1);
                 }
+
+                // --- INTENTO 2: DolarApi.com (Respaldo) ---
+                try {
+                    const [resUSD, resEUR] = await Promise.all([
+                        fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
+                        fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json())
+                    ]);
+
+                    if (resUSD.promedio && resEUR.promedio) {
+                        els.refBcvUsd.textContent = `Bs. ${parseFloat(resUSD.promedio).toFixed(2)}`;
+                        els.refBcvEur.textContent = `Bs. ${parseFloat(resEUR.promedio).toFixed(2)}`;
+                        return; // ¡Éxito!
+                    }
+                } catch (err2) {
+                    console.error("Todas las APIs fallaron:", err2);
+                }
+
+                // Si llegamos aquí, nada funcionó
+                els.refBcvUsd.textContent = 'Sin Conexión';
+                els.refBcvEur.textContent = 'Sin Conexión';
             };
 
             els.menuBtnRate.onclick = () => { 
