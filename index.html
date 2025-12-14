@@ -77,6 +77,13 @@
                         'dark-card': '#1F2937',
                         'dark-text': '#F9FAFB'
                     },
+                    screens: {
+                        'xs': '475px',
+                        'sm': '640px',
+                        'md': '768px',
+                        'lg': '1024px',
+                        'xl': '1280px',
+                    },
                     keyframes: {
                         fadeIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
                         fadeOut: { '0%': { opacity: '1', transform: 'scale(1)' }, '100%': { opacity: '0', transform: 'scale(0.95)' } },
@@ -99,6 +106,7 @@
         input:checked ~ .block { background-color: #2563EB; }
         input:checked ~ .dot { transform: translateX(100%); }
         
+        /* Cart Sheet Styles */
         #cart-sheet { 
             transform: translateY(100%); 
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -106,9 +114,33 @@
         }
         #cart-sheet.open { transform: translateY(0); }
         
+        /* Desktop Cart tweak: on LG screens, it acts more like a popup */
+        @media (min-width: 1024px) {
+            #cart-sheet {
+                transform: translateY(110%); /* Hide slightly more */
+                width: 400px;
+                left: auto;
+                right: 20px;
+                bottom: 20px;
+                border-radius: 1rem;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            #cart-sheet.open { transform: translateY(0); }
+        }
+
         /* Sidebar Styles */
-        #sidebar-menu { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #sidebar-menu { 
+            transform: translateX(-100%); 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
         #sidebar-menu.open { transform: translateX(0); }
+        
+        /* Desktop Sidebar: Always visible */
+        @media (min-width: 1024px) {
+            #sidebar-menu { transform: translateX(0); }
+            #sidebar-overlay { display: none !important; }
+        }
+
         #sidebar-overlay.open { display: block; opacity: 1; pointer-events: auto; }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -118,12 +150,24 @@
 </head>
 <body class="bg-secondary text-primary dark:bg-dark-bg dark:text-dark-text min-h-screen transition-colors duration-300">
 
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm"></div>
-    <div id="sidebar-menu" class="fixed top-0 left-0 w-72 h-full bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col">
-        <div class="p-4 bg-primary dark:bg-gray-800 text-white flex justify-between items-center shadow-sm">
-            <h2 class="text-xl font-bold flex items-center"><i data-lucide="menu" class="w-6 h-6 mr-2"></i> Menú</h2>
-            <button id="btn-close-sidebar" class="text-white hover:text-gray-300"><i data-lucide="x" class="w-6 h-6"></i></button>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm lg:hidden"></div>
+    
+    <div id="sidebar-menu" class="fixed top-0 left-0 w-72 h-full bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col border-r border-gray-200 dark:border-gray-800 lg:z-30">
+        <div class="p-4 bg-primary dark:bg-gray-800 text-white flex justify-between items-center shadow-sm h-16">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+                <i data-lucide="store" class="w-6 h-6"></i> Mi Tienda
+            </h2>
+            <button id="btn-close-sidebar" class="text-white hover:text-gray-300 lg:hidden"><i data-lucide="x" class="w-6 h-6"></i></button>
         </div>
+        
+        <div class="p-4 bg-blue-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+             <div class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Dólar BCV</div>
+             <div class="flex justify-between items-end">
+                <span id="sidebar-rate-usd" class="text-lg font-bold text-gray-800 dark:text-white">...</span>
+                <span class="text-xs text-green-600 dark:text-green-400 font-medium">Actualizado</span>
+             </div>
+        </div>
+
         <nav class="flex-grow p-4 space-y-2 overflow-y-auto">
             <button id="menu-btn-add" class="w-full flex items-center p-4 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors font-semibold shadow-sm border border-green-200 dark:border-green-800/50">
                 <i data-lucide="plus-circle" class="w-6 h-6 mr-3"></i> Añadir Producto
@@ -137,43 +181,52 @@
             </button>
         </nav>
         <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-xs text-center text-gray-400">Calculadora Mi Tienda v1.5</p>
+            <p class="text-xs text-center text-gray-400">Calculadora Mi Tienda v1.7</p>
         </div>
     </div>
 
-    <div class="max-w-md mx-auto min-h-screen bg-white dark:bg-gray-900 shadow-lg flex flex-col transition-colors duration-300 relative overflow-hidden">
+    <div class="w-full min-h-screen bg-secondary dark:bg-dark-bg transition-all duration-300 lg:pl-72 flex flex-col">
         
-        <div id="calculator-screen" class="flex flex-col h-screen">
-            <header class="p-4 bg-primary dark:bg-gray-800 text-white flex justify-between items-center shadow-md z-10 transition-colors duration-300">
+        <div id="calculator-screen" class="flex flex-col flex-grow h-screen lg:h-auto">
+            <header class="p-4 bg-primary dark:bg-gray-800 text-white flex justify-between items-center shadow-md z-20 sticky top-0 transition-colors duration-300">
                 <div class="flex items-center gap-3">
-                    <button id="btn-open-sidebar" class="p-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    <button id="btn-open-sidebar" class="p-2 rounded-lg hover:bg-gray-700 transition-colors lg:hidden">
                         <i data-lucide="menu" class="w-6 h-6"></i>
                     </button>
-                    <h1 class="text-xl font-bold">Calculadora $-Bs</h1>
+                    <h1 class="text-xl font-bold lg:text-2xl">Catálogo</h1>
                 </div>
-                <button id="btn-theme-toggle" class="p-2 rounded-lg hover:bg-gray-700 transition-colors" title="Cambiar Tema">
-                    <span id="theme-moon-wrapper"><i data-lucide="moon" class="w-5 h-5"></i></span>
-                    <span id="theme-sun-wrapper" class="hidden"><i data-lucide="sun" class="w-5 h-5"></i></span>
-                </button>
+                <div class="flex items-center gap-4">
+                     <div class="hidden md:block text-right">
+                        <div class="text-[10px] text-gray-400 uppercase font-bold">Tasa Manual</div>
+                        <div class="font-bold text-green-400"><span id="header-exchange-rate">5.80</span> Bs</div>
+                    </div>
+                    <button id="btn-theme-toggle" class="p-2 rounded-lg hover:bg-gray-700 transition-colors" title="Cambiar Tema">
+                        <span id="theme-moon-wrapper"><i data-lucide="moon" class="w-5 h-5"></i></span>
+                        <span id="theme-sun-wrapper" class="hidden"><i data-lucide="sun" class="w-5 h-5"></i></span>
+                    </button>
+                </div>
             </header>
 
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky top-0 z-0">
-                <div class="relative">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 z-10 sticky top-[64px] lg:top-[64px] shadow-sm">
+                <div class="max-w-5xl mx-auto relative">
                     <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="search-input" placeholder="Buscar producto..." class="w-full p-3 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary focus:border-primary bg-gray-50 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 transition-colors">
+                    <input type="text" id="search-input" placeholder="Buscar producto..." class="w-full p-3 pl-10 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary focus:border-primary bg-gray-50 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 transition-colors shadow-inner">
                     <button id="btn-clear-search" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
             
-            <div class="p-2 bg-gray-100 dark:bg-gray-800 text-center text-sm font-medium border-b border-gray-200 dark:border-gray-700 transition-colors">
+            <div class="md:hidden p-2 bg-gray-100 dark:bg-gray-800 text-center text-sm font-medium border-b border-gray-200 dark:border-gray-700 transition-colors">
                 Tasa de Cambio: <span id="current-exchange-rate" class="font-bold text-green-600 dark:text-green-400">5.80</span> Bs/USD
             </div>
 
-            <main id="product-list" class="flex-grow p-4 space-y-4 overflow-y-auto pb-24 bg-secondary dark:bg-gray-900 transition-colors"></main>
+            <main class="flex-grow p-4 overflow-y-auto bg-secondary dark:bg-dark-bg transition-colors">
+                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-w-7xl mx-auto pb-24">
+                    </div>
+            </main>
 
-            <button id="btn-floating-cart" class="hidden fixed bottom-6 right-6 w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl z-20 flex items-center justify-center transition-all transform hover:scale-105 active:scale-95">
+            <button id="btn-floating-cart" class="hidden fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-2xl z-20 flex items-center justify-center transition-all transform hover:scale-110 active:scale-95">
                 <i data-lucide="shopping-cart" class="w-7 h-7"></i>
                 <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">0</span>
             </button>
@@ -226,7 +279,7 @@
                                 <span id="ref-bcv-eur" class="block font-bold text-sm text-gray-800 dark:text-gray-200 mt-0.5">Cargando...</span>
                             </div>
                         </div>
-                        <p class="text-[9px] text-gray-400 mt-2 text-center">Datos vía PyDolarVenezuela</p>
+                        <p class="text-[9px] text-gray-400 mt-2 text-center">Datos vía Proxy (Anti-bloqueo)</p>
                     </div>
                     <footer class="p-4 bg-gray-50 dark:bg-gray-700 border-t dark:border-gray-600 flex justify-end"><button type="submit" class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">Guardar Manual</button></footer>
                 </form>
@@ -308,30 +361,40 @@
             </div>
         </div>
 
-        <div id="cart-sheet" class="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-900 shadow-[0_-5px_20px_rgba(0,0,0,0.3)] border-t border-gray-200 dark:border-gray-700 rounded-t-2xl z-40 flex flex-col max-h-[85vh]">
-            <div id="cart-handle" class="w-full p-4 flex justify-center cursor-pointer bg-gray-50 dark:bg-gray-800 rounded-t-2xl border-b border-gray-200 dark:border-gray-700 touch-none">
+        <div id="cart-sheet" class="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-900 shadow-[0_-5px_20px_rgba(0,0,0,0.3)] border-t lg:border-none border-gray-200 dark:border-gray-700 rounded-t-2xl z-40 flex flex-col max-h-[85vh] lg:max-h-[600px]">
+            <div id="cart-handle" class="w-full p-4 flex justify-center cursor-pointer bg-gray-50 dark:bg-gray-800 rounded-t-2xl border-b border-gray-200 dark:border-gray-700 touch-none lg:hidden">
                 <div class="w-12 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
             </div>
-            <header class="px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
+            <header class="px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700 lg:rounded-t-2xl">
                 <div class="flex items-center space-x-2">
                      <h2 class="text-xl font-bold text-primary dark:text-white flex items-center"><i data-lucide="shopping-cart" class="w-6 h-6 mr-2"></i> Carrito</h2>
-                    <button id="btn-quick-add" class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-200">+ Item Rápido</button>
+                    <button id="btn-quick-add" class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold px-2 py-1 rounded border border-blue-200 dark:border-blue-800 hover:bg-blue-200">+ Item</button>
                 </div>
                 <div class="flex items-center space-x-3">
                     <button id="btn-open-share" class="text-green-600 hover:text-green-700 font-semibold" title="Compartir Pedido">
                         <i data-lucide="share-2" class="w-5 h-5"></i>
                     </button>
-                    <div class="flex items-center">
-                        <label for="toggle-credit-card" class="flex items-center cursor-pointer select-none">
-                            <div class="relative"><input type="checkbox" id="toggle-credit-card" class="sr-only"><div class="block bg-gray-300 dark:bg-gray-600 w-10 h-6 rounded-full transition-colors"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div></div>
-                            <div class="ml-2 text-xs font-bold text-gray-600 dark:text-gray-400"><i data-lucide="credit-card" class="w-4 h-4 inline"></i> 11%</div>
+                    <button id="btn-close-cart-desktop" class="text-gray-400 hover:text-gray-600 hidden lg:block"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    
+                    <div class="flex items-center lg:hidden">
+                         <label for="toggle-credit-card-mobile" class="flex items-center cursor-pointer select-none">
+                            <div class="relative"><input type="checkbox" id="toggle-credit-card-mobile" class="toggle-card-fee sr-only"><div class="block bg-gray-300 dark:bg-gray-600 w-10 h-6 rounded-full transition-colors"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div></div>
                         </label>
                     </div>
-                    <button id="btn-clear-cart" class="text-red-600 hover:text-red-700 font-semibold text-sm ml-2"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    <button id="btn-clear-cart" class="text-red-600 hover:text-red-700 font-semibold text-sm ml-2 lg:hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                 </div>
             </header>
+            
             <div id="cart-items-list" class="flex-grow overflow-y-auto p-4 space-y-3 bg-white dark:bg-gray-900 min-h-[200px]"></div>
-            <footer class="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 space-y-1 pb-8">
+            
+            <footer class="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 space-y-1 pb-8 lg:pb-4 lg:rounded-b-2xl">
+                <div class="hidden lg:flex justify-between items-center mb-2">
+                    <label class="flex items-center text-xs text-gray-500 cursor-pointer">
+                        <input type="checkbox" class="toggle-card-fee mr-2" id="toggle-credit-card-desktop"> 11% Tarjeta
+                    </label>
+                    <button id="btn-clear-cart-desktop" class="text-xs text-red-500 hover:underline">Vaciar</button>
+                </div>
+
                 <div class="flex justify-between items-center text-lg font-bold dark:text-gray-200"><span>Subtotal USD:</span><span id="cart-subtotal-usd" class="text-blue-600 dark:text-blue-400">$0.00</span></div>
                 <div id="cart-commission-row" class="flex justify-between items-center text-sm font-medium text-gray-600 dark:text-gray-400 hidden"><span>Comisión Tarjeta (11%):</span><span id="cart-commission-bs">Bs. 0.00</span></div>
                 <div class="flex justify-between items-center text-2xl font-bold mt-1 pt-2 border-t border-gray-200 dark:border-gray-600 dark:text-white"><span>Total Bs:</span><span id="cart-total-bs" class="text-green-600 dark:text-green-500">Bs. 0.00</span></div>
@@ -460,7 +523,9 @@
                 menuBtnData: document.getElementById('menu-btn-data'),
                 // BCV ELEMENTS
                 refBcvUsd: document.getElementById('ref-bcv-usd'),
-                refBcvEur: document.getElementById('ref-bcv-eur')
+                refBcvEur: document.getElementById('ref-bcv-eur'),
+                sidebarRateUsd: document.getElementById('sidebar-rate-usd'), // Nuevo para desktop
+                headerRate: document.getElementById('header-exchange-rate') // Nuevo para desktop
             };
 
             const updateThemeIcons = () => {
@@ -499,7 +564,7 @@
             els.sidebarOverlay.onclick = () => toggleSidebar(false);
 
             els.menuBtnAdd.onclick = () => {
-                toggleSidebar(false);
+                if(window.innerWidth < 1024) toggleSidebar(false); // Solo cerrar en móvil
                 els.productForm.reset();
                 els.prodId.value = ''; els.prodImgPreview.src='https://placehold.co/80x80/e0e0e0/909090?text=SIN+IMG';
                 els.prodImgBase64.value=''; els.btnRmImg.classList.add('hidden');
@@ -508,72 +573,74 @@
                 showModal(els.modalProduct);
             };
 
-// --- LOGICA ROBUSTA PARA BUSCAR DATOS BCV (DOBLE INTENTO) ---
+            // --- LOGICA BCV CON PROXY (ANTI-BLOQUEO) ---
             const fetchBCVData = async () => {
-                // Indicador de carga
                 els.refBcvUsd.textContent = 'Cargando...';
                 els.refBcvEur.textContent = 'Cargando...';
+                els.sidebarRateUsd.textContent = '...';
 
-                // --- INTENTO 1: PyDolarVenezuela (Suele ser la más estable) ---
                 try {
-                    const response = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar');
-                    if (!response.ok) throw new Error('API 1 falló');
+                    const targetUrl = 'https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv';
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
                     
-                    const data = await response.json();
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error('Proxy falló');
                     
-                    // Verificamos si existe el monitor BCV
+                    const result = await response.json();
+                    
+                    if (!result.contents) throw new Error('Datos vacíos');
+                    
+                    const data = JSON.parse(result.contents);
+                    
+                    let price = 0;
                     if (data.monitors && data.monitors.bcv) {
-                        const usd = parseFloat(data.monitors.bcv.price);
-                        // El euro a veces no viene directo, calculamos un estimado base o buscamos si existe
-                        // Para simplificar y asegurar que no falle, usamos la relación oficial si no hay endpoint de euro
-                        // Pero intentaremos buscar el euro en su propio endpoint
-                        let eur = usd * 1.1; // Fallback temporal
+                        price = data.monitors.bcv.price;
+                    } else if (data.price) {
+                        price = data.price;
+                    }
 
-                        try {
-                            const respEur = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/euro');
-                            const dataEur = await respEur.json();
-                            if(dataEur.monitors && dataEur.monitors.bcv) {
-                                eur = parseFloat(dataEur.monitors.bcv.price);
-                            }
-                        } catch(e) { console.log("Euro API 1 falló, usando estimado"); }
-
-                        els.refBcvUsd.textContent = `Bs. ${usd.toFixed(2)}`;
+                    if (price > 0) {
+                        const priceStr = `Bs. ${parseFloat(price).toFixed(2)}`;
+                        els.refBcvUsd.textContent = priceStr;
+                        els.sidebarRateUsd.textContent = priceStr; // Actualizar en sidebar desktop
+                        
+                        const eur = price * 1.1; 
                         els.refBcvEur.textContent = `Bs. ${eur.toFixed(2)}`;
-                        return; // ¡Éxito! Salimos de la función
+                    } else {
+                        throw new Error('Precio no encontrado');
                     }
-                } catch (err1) {
-                    console.warn("Intento 1 fallido, probando API de respaldo...", err1);
+
+                } catch (error) {
+                    console.error("Error Proxy:", error);
+                    try {
+                        const resp2 = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                        const data2 = await resp2.json();
+                        if(data2.promedio) {
+                            const p = `Bs. ${parseFloat(data2.promedio).toFixed(2)}`;
+                            els.refBcvUsd.textContent = p;
+                            els.sidebarRateUsd.textContent = p;
+                            els.refBcvEur.textContent = `Bs. ${(parseFloat(data2.promedio)*1.1).toFixed(2)}`;
+                            return;
+                        }
+                    } catch(e2) { console.error("Intento 2 falló"); }
+
+                    els.refBcvUsd.textContent = 'Error';
+                    els.sidebarRateUsd.textContent = 'Error';
+                    els.refBcvEur.textContent = 'Error';
                 }
-
-                // --- INTENTO 2: DolarApi.com (Respaldo) ---
-                try {
-                    const [resUSD, resEUR] = await Promise.all([
-                        fetch('https://ve.dolarapi.com/v1/dolares/oficial').then(r => r.json()),
-                        fetch('https://ve.dolarapi.com/v1/euros/oficial').then(r => r.json())
-                    ]);
-
-                    if (resUSD.promedio && resEUR.promedio) {
-                        els.refBcvUsd.textContent = `Bs. ${parseFloat(resUSD.promedio).toFixed(2)}`;
-                        els.refBcvEur.textContent = `Bs. ${parseFloat(resEUR.promedio).toFixed(2)}`;
-                        return; // ¡Éxito!
-                    }
-                } catch (err2) {
-                    console.error("Todas las APIs fallaron:", err2);
-                }
-
-                // Si llegamos aquí, nada funcionó
-                els.refBcvUsd.textContent = 'Sin Conexión';
-                els.refBcvEur.textContent = 'Sin Conexión';
             };
+            
+            // Cargar tasa al inicio
+            fetchBCVData();
 
             els.menuBtnRate.onclick = () => { 
-                toggleSidebar(false); 
+                if(window.innerWidth < 1024) toggleSidebar(false); 
                 showModal(els.modalRate);
-                fetchBCVData(); // Llamamos a la API al abrir
+                fetchBCVData(); 
             };
             
             els.menuBtnData.onclick = () => { 
-                toggleSidebar(false); 
+                if(window.innerWidth < 1024) toggleSidebar(false); 
                 els.exportTxt.value = JSON.stringify({ inventory, exchangeRate }); 
                 showModal(els.modalSync); 
             };
@@ -595,31 +662,34 @@
                 els.productList.innerHTML = '';
                 const term = normalizeText(txt);
                 const list = inventory.filter(p => normalizeText(p.name).includes(term)).sort((a,b)=>a.name.localeCompare(b.name));
-                if(!list.length) { els.productList.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400 py-4">Sin resultados</p>'; return; }
+                if(!list.length) { els.productList.innerHTML = '<p class="col-span-full text-center text-gray-500 dark:text-gray-400 py-4">Sin resultados</p>'; return; }
                 
                 list.forEach(p => {
                     const cItem = cart.find(i => i.id === p.id);
                     const qty = cItem ? cItem.quantity : 0;
                     const bs = (p.priceUSD * exchangeRate).toFixed(2);
                     const div = document.createElement('div');
-                    div.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-4 flex flex-col justify-between hover:shadow-lg transition-colors';
+                    // Clases modificadas para Card Grid (altura completa)
+                    div.className = 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-4 flex flex-col justify-between hover:shadow-lg transition-colors h-full';
                     div.innerHTML = `
                         <div class="flex items-start mb-3">
-                            <img src="${p.imageBase64 || 'https://placehold.co/80x80/e0e0e0/909090?text=SIN+IMG'}" class="w-20 h-20 object-cover rounded-lg mr-4 border dark:border-gray-600">
+                            <img src="${p.imageBase64 || 'https://placehold.co/80x80/e0e0e0/909090?text=SIN+IMG'}" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg mr-3 sm:mr-4 border dark:border-gray-600">
                             <div class="flex-grow min-w-0">
-                                <h3 class="text-lg font-bold break-words dark:text-gray-100">${p.name}</h3>
-                                <p class="text-2xl font-extrabold text-blue-600 dark:text-blue-400 my-1">$${p.priceUSD.toFixed(2)} ${p.isWeighted?'<span class="text-xs text-gray-500">/kg</span>':''}</p>
-                                <p class="text-sm font-semibold text-green-600 dark:text-green-500">Bs. ${bs}</p>
+                                <h3 class="text-base sm:text-lg font-bold break-words dark:text-gray-100 leading-tight mb-1">${p.name}</h3>
+                                <div class="flex flex-col">
+                                    <span class="text-xl sm:text-2xl font-extrabold text-blue-600 dark:text-blue-400">$${p.priceUSD.toFixed(2)} ${p.isWeighted?'<span class="text-xs text-gray-500">/kg</span>':''}</span>
+                                    <span class="text-xs sm:text-sm font-semibold text-green-600 dark:text-green-500">Bs. ${bs}</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700 mt-auto">
                              <div class="flex space-x-2 items-center">
                                 <button class="btn-edit text-accent dark:text-gray-400 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" data-id="${p.id}"><i data-lucide="pencil" class="w-5 h-5"></i></button>
                                 ${p.isWeighted ? 
                                     `<button class="btn-add bg-green-600 text-white px-3 py-1 rounded-lg text-sm" data-id="${p.id}">${qty>0?'Más':'Añadir Peso'}</button>` :
                                     qty>0 ? 
                                     `<div class="flex items-center space-x-2"><button class="btn-sub text-red-600 dark:text-red-400" data-id="${p.id}"><i data-lucide="minus-circle" class="w-6 h-6"></i></button><span class="font-bold text-lg dark:text-white">${qty}</span><button class="btn-add text-green-600 dark:text-green-400" data-id="${p.id}"><i data-lucide="plus-circle" class="w-6 h-6"></i></button></div>` :
-                                    `<button class="btn-add bg-green-600 text-white px-3 py-1 rounded-lg text-sm" data-id="${p.id}">Añadir</button>`
+                                    `<button class="btn-add bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors" data-id="${p.id}">Añadir</button>`
                                 }
                              </div>
                         </div>`;
@@ -633,6 +703,7 @@
                 let total = 0, count = 0;
                 
                 const hasItems = cart.length > 0;
+                // Botón flotante solo se muestra si NO está abierto el sheet y hay items
                 document.getElementById('btn-floating-cart').classList.toggle('hidden', !hasItems || isCartOpen);
                 document.getElementById('btn-clear-cart').disabled = !hasItems;
                 document.getElementById('btn-open-share').classList.toggle('hidden', !hasItems);
@@ -681,6 +752,7 @@
             const updateUI = () => {
                 document.getElementById('current-exchange-rate').textContent = exchangeRate.toFixed(2);
                 document.getElementById('modal-current-rate').textContent = exchangeRate.toFixed(2);
+                if(els.headerRate) els.headerRate.textContent = exchangeRate.toFixed(2); // Actualizar desktop header
                 els.exRateInput.value = exchangeRate.toFixed(2);
                 renderList(els.searchInput.value);
                 renderCart();
@@ -691,16 +763,19 @@
                 isCartOpen = true;
                 els.cartSheet.classList.add('open');
                 document.getElementById('btn-floating-cart').classList.add('hidden');
-                document.body.style.overflow = 'hidden'; 
+                // En Desktop no bloqueamos el scroll del body porque es tipo popup
+                if(window.innerWidth < 1024) document.body.style.overflow = 'hidden'; 
             };
 
             const closeCart = () => {
                 isCartOpen = false;
                 els.cartSheet.classList.remove('open');
-                els.cartSheet.style.transform = ''; 
                 if(cart.length > 0) document.getElementById('btn-floating-cart').classList.remove('hidden');
                 document.body.style.overflow = '';
             };
+            
+            // Cerrar carrito en desktop
+            document.getElementById('btn-close-cart-desktop').onclick = closeCart;
 
             els.cartHandle.onclick = () => { if (isCartOpen) closeCart(); else openCart(); };
             document.getElementById('btn-floating-cart').onclick = openCart;
@@ -917,15 +992,30 @@
 
             els.searchInput.oninput = (e) => { renderList(e.target.value); els.btnClearSearch.classList.toggle('hidden', !e.target.value); };
             els.btnClearSearch.onclick = () => { els.searchInput.value=''; renderList(); els.btnClearSearch.classList.add('hidden'); };
+            
+            // Vaciar carrito (Manejadores para móvil y desktop)
+            const clearCartHandler = () => { if(confirm("¿Vaciar?")) { cart=[]; localStorage.setItem('cart','[]'); updateUI(); closeCart(); } };
+            document.getElementById('btn-clear-cart').onclick = clearCartHandler;
+            document.getElementById('btn-clear-cart-desktop').onclick = clearCartHandler;
 
-            document.getElementById('btn-clear-cart').onclick = () => { if(confirm("¿Vaciar?")) { cart=[]; localStorage.setItem('cart','[]'); updateUI(); closeCart(); } };
             document.getElementById('btn-quick-add').onclick = () => {
                 const n = prompt("Nombre:"); if(!n) return;
                 const p = prompt("Precio USD:"); if(!p) return;
                 cart.push({id:`q-${Date.now()}`, name:n, priceUSD:parseFloat(p.replace(',','.')), quantity:1, isQuick:true});
                 localStorage.setItem('cart', JSON.stringify(cart)); updateUI();
             };
-            document.getElementById('toggle-credit-card').onchange = (e) => { applyCreditCardFee = e.target.checked; renderCart(); };
+            
+            // Toggle Tarjeta (Manejadores para móvil y desktop)
+            const toggleCardHandler = (e) => { 
+                applyCreditCardFee = e.target.checked; 
+                // Sincronizar ambos checkboxes
+                document.querySelectorAll('.toggle-card-fee').forEach(c => c.checked = applyCreditCardFee);
+                renderCart(); 
+            };
+            document.getElementById('toggle-credit-card-mobile').onchange = toggleCardHandler;
+            document.getElementById('toggle-credit-card-desktop').onchange = toggleCardHandler;
+
+
             els.cartItems.onclick = (e) => {
                 const btn = e.target.closest('.btn-rm-cart');
                 if(btn) { cart = cart.filter(x => x.id !== btn.dataset.id); localStorage.setItem('cart', JSON.stringify(cart)); updateUI(); }
